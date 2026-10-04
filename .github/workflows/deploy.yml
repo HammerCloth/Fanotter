@@ -1,0 +1,81 @@
+name: Build & Deploy
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci
+      - name: Typecheck and build
+        run: npm run build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist
+          retention-days: 7
+
+  deploy:
+    needs: build
+    # 与 Beaver 相同的开关：仓库变量 ENABLE_AUTO_DEPLOY=true 后，推送到 main 自动部署；手动触发不受开关限制
+    if: ${{ github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.ENABLE_AUTO_DEPLOY == 'true') }}
+    runs-on: ubuntu-latest
+    env:
+      RELEASE: ${{ github.sha }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist
+
+      - name: Prepare release dir
+        uses: appleboy/ssh-action@v1.2.2
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          envs: DEPLOY_PATH,RELEASE
+          script: |
+            set -euo pipefail
+            mkdir -p "$DEPLOY_PATH/releases/$RELEASE"
+        env:
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+
+      - name: Upload dist
+        uses: appleboy/scp-action@v1.0.0
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          source: "dist/*"
+          target: ${{ secrets.DEPLOY_PATH }}/releases/${{ github.sha }}
+          strip_components: 1
+
+      - name: Switch current release
+        uses: appleboy/ssh-action@v1.2.2
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          envs: DEPLOY_PATH,RELEASE
+          script: |
+            set -euo pipefail
+            cd "$DEPLOY_PATH"
+            test -f "releases/$RELEASE/index.html"
+            # 先建临时软链再 mv，切换是原子的；Caddy 挂载的是 $DEPLOY_PATH 整个目录，所以能看到新的 current
+            ln -sfn "releases/$RELEASE" current.tmp
+            mv -T current.tmp current
+            # 只保留最近 5 个版本，方便回滚
+            ls -1dt releases/*/ | tail -n +6 | xargs -r rm -rf
+            echo "current -> $(readlink current)"
+        env:
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}

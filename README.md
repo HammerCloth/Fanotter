@@ -35,6 +35,10 @@ npm run build    # 类型检查 + 打包到 dist/
 
 打包后的 `dist/` 放到任何静态托管上即可。路由是 History 模式，服务器需要把所有路径回退到 `index.html`。
 
+## 部署
+
+推送到 `main` 后由 GitHub Actions 构建并通过 SSH 发布到服务器，和 Beaver 共用同一个 Caddy，走子域名。服务器端只需一个目录和 Caddy 的一个站点块，步骤、密钥配置和回滚方法见 [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)。
+
 ## 数据来源
 
 | 数据 | 来源 | 缓存 |
