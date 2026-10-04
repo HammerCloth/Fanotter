@@ -1,0 +1,11 @@
+node_modules/
+dist/
+.omc/
+.DS_Store
+*.local
+
+# 设计阶段的素材：海报是 Bangumi 的图片，图标草稿没有保留价值，只提交图标成品
+posters/
+detail/
+icon/*
+!icon/fanotter-icon.png
