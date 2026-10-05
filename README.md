@@ -37,7 +37,7 @@ npm run build    # 类型检查 + 打包到 dist/
 
 ## 部署
 
-推送到 `main` 后由 GitHub Actions 构建并通过 SSH 发布到服务器，和 Beaver 共用同一个 Caddy，走子域名。服务器端只需一个目录和 Caddy 的一个站点块，步骤、密钥配置和回滚方法见 [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)。
+推送到 `main` 后由 GitHub Actions 构建，通过 SSH 发布到服务器上的一个目录，再原子切换到新版本。服务器只需要一个目录和 Web 服务器的一个站点块，步骤、密钥配置和回滚方法见 [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)。
 
 ## 数据来源
 
